@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model NewsArticle {
+  id            Int      @id @default(autoincrement())
+  slug          String   @unique
+  title         String
+  date          String
+  category      String
+  summary       String
+  keywords      String   @default("[]")
+  paragraphs    String   @default("[]")
+  images        String   @default("[]")
+  status        String   @default("published")
+  isFeatured    Boolean  @default(false)
+  featuredOrder Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+model CarouselSlide {
+  id        Int      @id @default(autoincrement())
+  date      String
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FileRecord {
+  id           Int      @id @default(autoincrement())
+  originalName String
+  storedPath   String
+  url          String
+  mimeType     String
+  size         Int
+  category     String
+  parsedText   String?
+  createdAt    DateTime @default(now())
+}
