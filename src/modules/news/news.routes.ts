@@ -9,10 +9,12 @@ import {
   deleteNews,
   getAdminNewsById,
   getFeaturedNews,
+  getFeaturedNewsForAdmin,
   getNewsBySlug,
   getRelatedNews,
   listNews,
   listSitemapNews,
+  reorderFeaturedNews,
   setNewsFeatured,
   updateNews,
   type NewsInput
@@ -103,6 +105,27 @@ adminNewsRouter.get(
   asyncHandler(async (_req, res) => {
     const data = await countFeaturedNews()
     res.json({ code: 0, message: 'ok', data: { count: data } })
+  })
+)
+
+adminNewsRouter.get(
+  '/featured',
+  asyncHandler(async (_req, res) => {
+    const data = await getFeaturedNewsForAdmin()
+    res.json({ code: 0, message: 'ok', data })
+  })
+)
+
+adminNewsRouter.put(
+  '/reorder-featured',
+  asyncHandler(async (req, res) => {
+    const { ids } = (req.body ?? {}) as { ids?: number[] }
+    if (!Array.isArray(ids)) {
+      throw new HttpError(400, '排序参数不正确')
+    }
+    await reorderFeaturedNews(ids.map(Number))
+    const data = await getFeaturedNewsForAdmin()
+    res.json({ code: 0, message: '顺序已保存', data })
   })
 )
 

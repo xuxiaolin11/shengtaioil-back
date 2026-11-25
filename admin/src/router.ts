@@ -3,7 +3,7 @@ import AdminLayout from './layouts/AdminLayout.vue'
 import LoginView from './views/LoginView.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/admin/'),
   routes: [
     {
       path: '/login',

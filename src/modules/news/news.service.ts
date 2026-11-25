@@ -101,6 +101,25 @@ export const listNews = async (options: {
 export const countFeaturedNews = async (): Promise<number> =>
   prisma.newsArticle.count({ where: { isFeatured: true } })
 
+export const getFeaturedNewsForAdmin = async (): Promise<NewsItem[]> => {
+  const rows = await prisma.newsArticle.findMany({
+    where: { isFeatured: true },
+    orderBy: [{ featuredOrder: 'asc' }, { id: 'asc' }]
+  })
+  return rows.map(toNewsItem)
+}
+
+export const reorderFeaturedNews = async (ids: number[]): Promise<void> => {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.newsArticle.update({
+        where: { id },
+        data: { featuredOrder: index }
+      })
+    )
+  )
+}
+
 const assertFeaturedCapacity = async (willBeFeatured: boolean, isAlreadyFeatured = false) => {
   if (!willBeFeatured || isAlreadyFeatured) return
   if ((await countFeaturedNews()) >= MAX_FEATURED_NEWS) {

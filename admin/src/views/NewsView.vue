@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FileText, Plus, Search, Star, Pencil, Trash2 } from 'lucide-vue-next'
-import { del, get, patch } from '../api/request'
+import { FileText, Plus, Search, Star, Pencil, Trash2, GripVertical } from 'lucide-vue-next'
+import { del, get, patch, put } from '../api/request'
 import type { NewsItem, PageResult } from '../types'
 import NewsEditDialog from '../components/NewsEditDialog.vue'
 
@@ -14,6 +14,9 @@ const keyword = ref('')
 const statusFilter = ref('')
 const categories = ref<string[]>([])
 const featuredCount = ref(0)
+const featuredItems = ref<NewsItem[]>([])
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
 const dialogOpen = ref(false)
 const editing = ref<NewsItem | null>(null)
 const pendingParagraphs = ref<string[]>([])
@@ -44,6 +47,49 @@ const loadFeaturedCount = () => {
   get<{ count: number }>('/admin/news/featured-count')
     .then((data) => {
       featuredCount.value = data.count
+    })
+    .catch(() => undefined)
+}
+
+const loadFeaturedItems = () => {
+  get<NewsItem[]>('/admin/news/featured')
+    .then((data) => {
+      featuredItems.value = data
+    })
+    .catch(() => undefined)
+}
+
+const onDragStart = (index: number) => {
+  dragIndex.value = index
+}
+
+const onDragOver = (event: DragEvent, index: number) => {
+  event.preventDefault()
+  dragOverIndex.value = index
+}
+
+const onDragEnd = () => {
+  dragIndex.value = null
+  dragOverIndex.value = null
+}
+
+const onDrop = async (index: number) => {
+  const from = dragIndex.value
+  if (from === null || from === index) {
+    onDragEnd()
+    return
+  }
+
+  const next = [...featuredItems.value]
+  const [moved] = next.splice(from, 1)
+  next.splice(index, 0, moved)
+  featuredItems.value = next
+  onDragEnd()
+
+  await put('/admin/news/reorder-featured', { ids: next.map((item) => item.id) })
+    .then(() => {
+      ElMessage.success('展示顺序已保存')
+      load()
     })
     .catch(() => undefined)
 }
@@ -88,6 +134,7 @@ const toggleFeatured = async (item: NewsItem) => {
   if (data) {
     item.isFeatured = data.isFeatured
     featuredCount.value += data.isFeatured ? 1 : -1
+    loadFeaturedItems()
     ElMessage.success(data.isFeatured ? '已设为首页展示' : '已取消首页展示')
   }
 }
@@ -103,6 +150,7 @@ const remove = async (item: NewsItem) => {
       ElMessage.success('删除成功')
       if (item.isFeatured) featuredCount.value = Math.max(0, featuredCount.value - 1)
       load()
+      loadFeaturedItems()
     })
     .catch(() => undefined)
 }
@@ -110,12 +158,14 @@ const remove = async (item: NewsItem) => {
 const onDialogSaved = () => {
   load()
   loadFeaturedCount()
+  loadFeaturedItems()
 }
 
 onMounted(() => {
   load()
   loadCategories()
   loadFeaturedCount()
+  loadFeaturedItems()
 })
 </script>
 
@@ -130,6 +180,43 @@ onMounted(() => {
         <el-icon class="mr-1"><Plus /></el-icon>
         新建新闻
       </el-button>
+    </div>
+
+    <div class="page-card p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="section-title">首页展示顺序</h2>
+          <p class="mt-1 text-sm text-muted">按住条目拖拽即可调整首页「最新动态」的展示顺序，最多 3 条。</p>
+        </div>
+        <el-tag type="info" size="small">当前 {{ featuredItems.length }} / 3 条</el-tag>
+      </div>
+
+      <div v-if="featuredItems.length" class="mt-4 space-y-2">
+        <div
+          v-for="(item, index) in featuredItems"
+          :key="item.id"
+          draggable="true"
+          class="flex cursor-grab items-center gap-3 rounded-lg border border-navy-900/10 bg-surface p-3 transition-all active:cursor-grabbing"
+          :class="dragOverIndex === index && dragIndex !== index ? 'border-navy-700 bg-white shadow-md' : ''"
+          @dragstart="onDragStart(index)"
+          @dragover="onDragOver($event, index)"
+          @dragend="onDragEnd"
+          @drop="onDrop(index)"
+        >
+          <GripVertical :size="18" class="shrink-0 text-muted" />
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy-800 text-xs font-semibold text-white">
+            {{ index + 1 }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-medium text-ink" :title="item.title">{{ item.title }}</div>
+            <div class="text-xs text-muted">{{ item.date }} · {{ item.category }}</div>
+          </div>
+          <el-button link type="danger" size="small" @click="toggleFeatured(item)">取消展示</el-button>
+        </div>
+      </div>
+      <div v-else class="mt-4 rounded-lg border border-dashed border-navy-900/20 p-6 text-center text-sm text-muted">
+        暂无首页展示新闻，可在下方列表中点击星标添加（最多 3 条）
+      </div>
     </div>
 
     <div class="page-card p-5">

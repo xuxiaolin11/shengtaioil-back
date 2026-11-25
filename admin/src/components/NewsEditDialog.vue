@@ -326,9 +326,8 @@ defineExpose({ form })
           </div>
           <el-switch v-model="form.isFeatured" @change="onFeaturedChange" />
         </div>
-        <div v-if="form.isFeatured">
-          <label class="mb-2 block text-sm font-medium text-ink">展示顺序（数字越小越靠前）</label>
-          <el-input-number v-model="form.featuredOrder" :min="0" :max="99" />
+        <div v-if="form.isFeatured" class="rounded-md bg-surface p-2 text-xs text-muted">
+          展示顺序可在新闻列表页顶部的「首页展示顺序」区域拖拽调整
         </div>
       </div>
     </div>
